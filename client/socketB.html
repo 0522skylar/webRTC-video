@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <p>这是B页面</p>
+  <p>接收到A页面的视频</p>
+  <video autoplay controls muted id="elB"></video>
+  <script>
+    var socketB = new WebSocket('ws://localhost:8000');
+
+    var peerB = new RTCPeerConnection()
+    var videoElB = document.getElementById('elB')
+
+    // 监听数据传来
+    peerB.ontrack = async event => {
+      const [remoteStream] = event.streams
+      videoElB.srcObject = remoteStream
+    }
+
+    // B向A发送消息
+    socketB.onopen = function () {
+      socketB.send(JSON.stringify({ B: 1234 }));
+    };
+    // B接收A的消息
+    // peerB 端，接收 peerA 传来的 offer
+    socketB.onmessage = evt => {
+      // console.log(evt.data)
+      handleBlobToText(evt.data)
+    }
+
+    const handleBlobToText = (blob) => {
+      let reader = new FileReader()
+      reader.readAsText(blob, 'utf-8') // 接收到的是blob数据，先转成文本
+      reader.onload = async function () {
+        console.log(reader.result)
+        let { type, data } = JSON.parse(reader.result) // 文本转对象
+        console.log(JSON.parse(reader.result))
+        if (type == 'offer') {
+          await peerB.setRemoteDescription(data)
+          console.log('2.然后是B页面设置远程描述', new Date().getTime())
+          let answer = await peerB.createAnswer()
+          console.log('3.B页面生成发送到A页面的answer', new Date().getTime())
+          await peerB.setLocalDescription(answer)
+          console.log('4.B页面设置本地描述', new Date().getTime())
+          // 向 peerA 传输 answer
+          socketB.send(JSON.stringify({ type: 'answer', data: answer }))
+        }
+        if (type == 'candid') {
+          peerB.addIceCandidate(data)
+        }
+      }
+    }
+
+
+    socketB.onerror = function () {
+      console.log('WebSocket error. Ready state:', socketB.readyState);
+    };
+  </script>
+</body>
+
+</html>
