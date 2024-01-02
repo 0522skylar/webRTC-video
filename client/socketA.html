@@ -19,7 +19,6 @@
 
     // 创建WebSocket连接
     var socketA = new WebSocket('ws://localhost:8000');
-    socketA.clientId = 1234
 
     var peerA = null
     var videoElA = document.getElementById('elA')
@@ -75,7 +74,6 @@
         reader.readAsText(evt.data, 'utf-8')
         reader.onload = async function () {
           let { type, data } = JSON.parse(reader.result)
-          console.log(JSON.parse(reader.result), 111)
           if (type == 'answer') {
             await peerA.setLocalDescription(offer)
             console.log('5.A页面设置本地描述', new Date().getTime())
