@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A页面</title>
+</head>
+
+<body>
+  <p>这是A页面</p>
+
+  <div class="local-stream-page">
+    <video autoplay controls muted id="elA"></video>
+    <button onclick="onStart()">打视频给B页面</button>
+  </div>
+  <script>
+
+    // 创建WebSocket连接
+    var socketA = new WebSocket('ws://localhost:8000');
+    socketA.clientId = 1234
+
+    var peerA = null
+    var videoElA = document.getElementById('elA')
+
+    const onStart = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: true
+        })
+        if (videoElA) {
+          videoElA.srcObject = stream // 在 video 标签上播放媒体流
+        }
+        peerInit(stream) // 初始化连接
+      } catch (error) {
+        console.log('error：', error)
+      }
+    }
+    const peerInit = stream => {
+      // 1. 创建连接实例
+      peerA = new RTCPeerConnection()
+      // 2. 添加视频流轨道
+      stream.getTracks().forEach(track => {
+        peerA.addTrack(track, stream)
+      })
+
+      // peerA 端
+      peerA.onicecandidate = event => {
+        if (event.candidate) {
+          socketA.send(JSON.stringify({ type: 'candid', data: event.candidate }))
+        }
+      }
+      // 检测连接状态
+      peerA.onconnectionstatechange = event => {
+        if (peerA.connectionState === 'connected') {
+          console.log('对等连接成功！')
+        }
+      }
+      // 互换sdp认证
+      transSDP()
+    }
+
+    // peerA 端
+    const transSDP = async () => {
+      let offer = await peerA.createOffer()
+      console.log('1.首先是A页面创建offer', new Date().getTime())
+      // 向 peerB 传输 offer
+      socketA.send(JSON.stringify({ type: 'offer', data: offer }))
+      // 接收 peerB 传来的 answer
+      socketA.onmessage = async evt => {
+
+        let reader = new FileReader()
+        reader.readAsText(evt.data, 'utf-8')
+        reader.onload = async function () {
+          let { type, data } = JSON.parse(reader.result)
+          console.log(JSON.parse(reader.result), 111)
+          if (type == 'answer') {
+            await peerA.setLocalDescription(offer)
+            console.log('5.A页面设置本地描述', new Date().getTime())
+            await peerA.setRemoteDescription(data)
+            console.log('6.A页面设备远程描述', new Date().getTime())
+          }
+        }
+
+      }
+    }
+
+    // A向B发送消息
+    socketA.onopen = function () {
+      socketA.send(JSON.stringify({ A: 111 }));
+    };
+
+
+
+    // A接收B的消息
+    socketA.onmessage = function (event) {
+      console.log('A received:', event.data);
+    };
+
+
+  </script>
+</body>
+
+</html>
