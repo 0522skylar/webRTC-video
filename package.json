@@ -1,0 +1,22 @@
+{
+  "name": "0522skylar",
+  "version": "1.0.0",
+  "description": "socket connection bidirectional video communication",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0522skylar/webRTC-video.git"
+  },
+  "author": "0522skylar",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/0522skylar/webRTC-video/issues"
+  },
+  "homepage": "https://github.com/0522skylar/webRTC-video#readme",
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
