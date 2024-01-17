@@ -17,8 +17,8 @@ ws.on('data', function connection({realDataBuffer, clients}) {
   // 将消息发送给所有客户端
   if (clients) {
     clients.forEach(function each(client) {
-      if (client !== wws.socket) { // wws.socket是最后连接的客户端，不是当前发生消息的客户端
-        wws.send(realDataBuffer); // 客户端接受的是blob格式数据
+      if (client !== ws.socket) { // ws.socket是最后连接的客户端，不是当前发生消息的客户端
+        ws.send(realDataBuffer); // 客户端接受的是blob格式数据
       }
     });
   }

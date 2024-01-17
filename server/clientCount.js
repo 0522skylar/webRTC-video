@@ -139,7 +139,7 @@ class MyWebsocket extends EventEmitter {
         '',
       ].join('\r\n');
       socket.write(resHeaders);
-
+      debugger
       socket.on('data', (data) => {
         // console.log(data)
         this.processData(data);
@@ -160,7 +160,7 @@ class MyWebsocket extends EventEmitter {
       if (this.clients) {
         this.clients.add(socket)
       }
-      // console.log(clients.size, 111)
+      console.log(this.clients.size, 'clients.size')
     });
   }
 
