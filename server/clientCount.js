@@ -1,10 +1,7 @@
 //ws.js
-const {
-  EventEmitter
-} = require('events');
+const { EventEmitter } = require('events');
 const http = require('http');
 const crypto = require('crypto');
-// const { Writable } = require('stream');
 
 // 也就是用客户端传过来的 key，加上一个固定的字符串，经过 sha1 加密之后，转成 base64 的结果
 function hashKey(key) {
@@ -13,37 +10,6 @@ function hashKey(key) {
   return sha1.digest('base64');
 }
 
-function handleMask(maskBytes, data) {
-  const payload = Buffer.alloc(data.length);
-  for (let i = 0; i < data.length; i++) {
-    payload[i] = maskBytes[i % 4] ^ data[i];
-  }
-  return payload;
-}
-
-const OPCODES = {
-  CONTINUE: 0,
-  TEXT: 1,
-  BINARY: 2,
-  CLOSE: 8,
-  PING: 9,
-  PONG: 10,
-};
-/**
- * Masks a buffer using the given mask.
- *
- * @param {Buffer} source The buffer to mask
- * @param {Buffer} mask The mask to use
- * @param {Buffer} output The buffer where to store the result
- * @param {Number} offset The offset at which to start writing
- * @param {Number} length The number of bytes to mask.
- * @public
- */
-function applyMask(source, mask, output, offset, length) {
-  for (let i = 0; i < length; i++) {
-    output[offset + i] = source[i] ^ mask[i & 3];
-  }
-}
 // 处理大量数据
 function frame(data) {
   options = {
@@ -131,34 +97,38 @@ function frame(data) {
   applyMask(data, mask, data, 0, dataLength);
   return [target, data];
 }
-// 少量数据
-function encodeMessage(opcode, payload) {
-  //payload.length < 126
-  let bufferData = Buffer.alloc(payload.length + 2 + 0);;
-
-  let byte1 = parseInt('10000000', 2) | opcode; // 设置 FIN 为 1
-  let byte2 = payload.length;
-
-  bufferData.writeUInt8(byte1, 0);
-  bufferData.writeUInt8(byte2, 1);
-
-  payload.copy(bufferData, 2);
-
-  return bufferData;
+function handleMask(maskBytes, data) {
+  const payload = Buffer.alloc(data.length);
+  for (let i = 0; i < data.length; i++) {
+    payload[i] = maskBytes[i % 4] ^ data[i];
+  }
+  return payload;
 }
-
+const OPCODES = {
+  CONTINUE: 0,
+  TEXT: 1,
+  BINARY: 2,
+  CLOSE: 8,
+  PING: 9,
+  PONG: 10,
+};
 
 class MyWebsocket extends EventEmitter {
   constructor(options) {
-    super(options);
+    super();
+    options = {
+      ...options,
+    }
 
     const server = http.createServer();
     server.listen(options.port || 8080);
+    this.clients = new Set()
+  
 
     server.on('upgrade', (req, socket) => {
       this.socket = socket;
+      
       socket.setKeepAlive(true);
-
       // websocket 升级协议
       const resHeaders = [
         'HTTP/1.1 101 Switching Protocols',
@@ -166,27 +136,41 @@ class MyWebsocket extends EventEmitter {
         'Connection: Upgrade',
         'Sec-WebSocket-Accept: ' + hashKey(req.headers['sec-websocket-key']),
         '',
-        ''
+        '',
       ].join('\r\n');
       socket.write(resHeaders);
 
       socket.on('data', (data) => {
+        // console.log(data)
         this.processData(data);
-        // console.log(data);
       });
-      socket.on('close', (error) => {
-          this.emit('close', error);
-      });
+      socket.on('close', () => {
+        this.clients.delete(socket)
+        console.log('close')
+      })
+      socket.on('end', () => {
+        this.clients.delete(socket)
+        console.log('end')
+      })
+      socket.on('error', (err) => {
+        console.log('error', err)
+      })
+      
+
+      if (this.clients) {
+        this.clients.add(socket)
+      }
+      // console.log(clients.size, 111)
     });
   }
 
   handleRealData(opcode, realDataBuffer) {
     switch (opcode) {
       case OPCODES.TEXT: // 文本
-        this.emit('data', realDataBuffer);
+        this.emit('data', {realDataBuffer, clients: this.clients});
         break;
       case OPCODES.BINARY: // 二进制
-        this.emit('data', realDataBuffer);
+        this.emit('data', {realDataBuffer, clients: this.clients});
         break;
       default:
         this.emit('close');
@@ -255,7 +239,7 @@ class MyWebsocket extends EventEmitter {
       this.socket.write(list[0]);
     }
   }
+
 }
 
 module.exports = MyWebsocket;
-
