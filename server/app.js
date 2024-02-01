@@ -1,7 +1,9 @@
-const WebSocket = require('ws');
+// const WebSocket = require('ws');
+// const wss = new WebSocket.Server({ port: 8000 });
+const MyWebSocket = require('./simple/serverWebsocket.js')
 
 // 创建一个 WebSocket 服务器，监听 8080 端口
-const wss = new WebSocket.Server({ port: 8000 });
+const wss = new MyWebSocket({ port: 8000 });
 
 console.log('Server started, port is 8000');
 // 当有客户端连接时，创建一个 WebSocket 并将其添加到客户端列表中
@@ -14,7 +16,10 @@ wss.on('connection', function connection(ws) {
 
     // 将消息发送给所有客户端
     wss.clients.forEach(function each(client) {
-      if (client !== ws && client.readyState === WebSocket.OPEN) {
+      // if (client !== ws && client.readyState === WebSocket.OPEN) {
+      //   client.send(message); // 客户端接受的是blob格式数据
+      // }
+      if (client !== ws) {
         client.send(message); // 客户端接受的是blob格式数据
       }
     });
