@@ -134,7 +134,7 @@ function frame(data) {
 // 少量数据
 function encodeMessage(opcode, payload) {
   //payload.length < 126
-  let bufferData = Buffer.alloc(payload.length + 2 + 0);;
+  let bufferData = Buffer.alloc(payload.length + 2 + 0);
 
   let byte1 = parseInt('10000000', 2) | opcode; // 设置 FIN 为 1
   let byte2 = payload.length;
@@ -157,7 +157,7 @@ class MyWebsocket extends EventEmitter {
 
     server.on('upgrade', (req, socket) => {
       this.socket = socket;
-      socket.setKeepAlive(true);
+      // socket.setKeepAlive(true);
 
       // websocket 升级协议
       const resHeaders = [
@@ -172,15 +172,17 @@ class MyWebsocket extends EventEmitter {
 
       socket.on('data', (data) => {
         this.processData(data);
-        // console.log(data);
+        // console.log(data, 111);
       });
       socket.on('close', (error) => {
           this.emit('close', error);
       });
     });
   }
-
+  
   handleRealData(opcode, realDataBuffer) {
+    console.log('opcode ---> ', opcode)
+    console.log('realDataBuffer ---> ', realDataBuffer)
     switch (opcode) {
       case OPCODES.TEXT: // 文本
         this.emit('data', realDataBuffer);
@@ -193,14 +195,17 @@ class MyWebsocket extends EventEmitter {
         break;
     }
   }
-
+  // 处理 WebSocket 协议中的数据帧
   processData(bufferData) {
-    const byte1 = bufferData.readUInt8(0);
+    console.log('bufferData ---> ', bufferData)
+    const byte1 = bufferData.readUInt8(0); // 第一个字节（byte1）中读取操作码（opcode），这是一个4位的值，用于指示帧的类型（如文本、二进制等）。
     let opcode = byte1 & 0x0f; 
     
-    const byte2 = bufferData.readUInt8(1);
+    const byte2 = bufferData.readUInt8(1); // 从第二个字节（byte2）中读取掩码位（MASK），这是一个1位的值，指示是否使用了掩码。
     const str2 = byte2.toString(2);
     const MASK = str2[0];
+    console.log('opcode ---> ', opcode)
+    console.log('mask ---> ', MASK)
 
     let curByteIndex = 2;
     
@@ -212,17 +217,17 @@ class MyWebsocket extends EventEmitter {
       payloadLength = bufferData.readBigUInt64BE(2);
       curByteIndex += 8;
     }
-
+    console.log('payloadLength ---> ', payloadLength)
     let realData = null;
     
     if (MASK) {
-      const maskKey = bufferData.slice(curByteIndex, curByteIndex + 4);  
+      const maskKey = bufferData.slice(curByteIndex, curByteIndex + 4); // 掩码密钥
       curByteIndex += 4;
       const payloadData = bufferData.slice(curByteIndex, curByteIndex + payloadLength);
-      realData = handleMask(maskKey, payloadData);
+      realData = handleMask(maskKey, payloadData); // 使用掩码密钥对有效载荷数据进行解密，以获取实际的数据（realData）。
     } 
-    
-    this.handleRealData(opcode, realData);
+    console.log('realData ---> ', realData)
+    this.handleRealData(opcode, realData); // 处理有效载荷
   }
 
   send(data) {
