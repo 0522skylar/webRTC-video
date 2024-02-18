@@ -7,7 +7,7 @@ const ws = new MyWebSocket({ port: 8000 });
 
 ws.on('data', (data) => {
   console.log('receive data:' + data); // 接受消息
-  // ws.send(data); // 自己给自己发送消息
+  ws.send(data); // 自己给自己发送消息
   // 如何区分多个客户端呢???
 });
 

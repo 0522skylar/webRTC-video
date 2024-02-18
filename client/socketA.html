@@ -91,10 +91,17 @@
     };
 
 
-
+    const handleBlobToText = (blob) => {
+      let reader = new FileReader()
+      reader.readAsText(blob, 'utf-8') // 接收到的是blob数据，先转成文本
+      reader.onload = async function () {
+        console.log(reader.result)
+      }
+    }
     // A接收B的消息
     socketA.onmessage = function (event) {
       console.log('A received:', event.data);
+      handleBlobToText(event.data)
     };
 
 

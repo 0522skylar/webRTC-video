@@ -59,21 +59,20 @@ function frame(data) {
   let offset = 2;
   let skipMasking = false;
 
-  if (options.mask) {
-    mask = options.maskBuffer || maskBuffer;
+  // if (options.mask) {
+  //   mask = options.maskBuffer || maskBuffer;
 
-    if (options.generateMask) {
-      options.generateMask(mask);
-    } else {
-      randomFillSync(mask, 0, 4);
-    }
+  //   if (options.generateMask) {
+  //     options.generateMask(mask);
+  //   } else {
+  //     randomFillSync(mask, 0, 4);
+  //   }
 
-    skipMasking = (mask[0] | mask[1] | mask[2] | mask[3]) === 0;
-    offset = 6;
-  }
+  //   skipMasking = (mask[0] | mask[1] | mask[2] | mask[3]) === 0;
+  //   offset = 6;
+  // }
 
   let dataLength;
-
   if (typeof data === 'string') {
     if (
       (!options.mask || skipMasking) &&
@@ -112,6 +111,7 @@ function frame(data) {
     target[2] = target[3] = 0;
     target.writeUIntBE(dataLength, 4, 6);
   }
+  console.log(skipMasking, 111)
 
   if (!options.mask) return [target, data];
 
@@ -133,6 +133,7 @@ function frame(data) {
 }
 // 少量数据
 function encodeMessage(opcode, payload) {
+  console.log(payload.length, '<---payload.length')
   //payload.length < 126
   let bufferData = Buffer.alloc(payload.length + 2 + 0);
 
@@ -181,8 +182,8 @@ class MyWebsocket extends EventEmitter {
   }
   
   handleRealData(opcode, realDataBuffer) {
-    console.log('opcode ---> ', opcode)
-    console.log('realDataBuffer ---> ', realDataBuffer)
+    // console.log('opcode ---> ', opcode)
+    // console.log('realDataBuffer ---> ', realDataBuffer)
     switch (opcode) {
       case OPCODES.TEXT: // 文本
         this.emit('data', realDataBuffer);
@@ -204,8 +205,8 @@ class MyWebsocket extends EventEmitter {
     const byte2 = bufferData.readUInt8(1); // 从第二个字节（byte2）中读取掩码位（MASK），这是一个1位的值，指示是否使用了掩码。
     const str2 = byte2.toString(2);
     const MASK = str2[0];
-    console.log('opcode ---> ', opcode)
-    console.log('mask ---> ', MASK)
+    // console.log('opcode ---> ', opcode)
+    // console.log('mask ---> ', MASK)
 
     let curByteIndex = 2;
     
@@ -217,7 +218,7 @@ class MyWebsocket extends EventEmitter {
       payloadLength = bufferData.readBigUInt64BE(2);
       curByteIndex += 8;
     }
-    console.log('payloadLength ---> ', payloadLength)
+    // console.log('payloadLength ---> ', payloadLength)
     let realData = null;
     
     if (MASK) {
@@ -247,18 +248,18 @@ class MyWebsocket extends EventEmitter {
 
   doSend(opcode, bufferDatafer) {
     // 少量数据
-    // this.socket.write(encodeMessage(opcode, bufferDatafer));
+    this.socket.write(encodeMessage(opcode, bufferDatafer));
     // 大量数据
-    let list = frame(bufferDatafer)
-    // console.log(list)
-    if (list.length === 2) {
-      this.socket.cork();
-      this.socket.write(list[0]);
-      this.socket.write(list[1]);
-      this.socket.uncork();
-    } else {
-      this.socket.write(list[0]);
-    }
+    // let list = frame(bufferDatafer)
+    // console.log(list, 1234)
+    // if (list.length === 2) {
+    //   this.socket.cork();
+    //   this.socket.write(list[0]);
+    //   this.socket.write(list[1]);
+    //   this.socket.uncork();
+    // } else {
+    //   this.socket.write(list[0]);
+    // }
   }
 }
 
