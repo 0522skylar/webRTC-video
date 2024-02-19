@@ -39,10 +39,6 @@ class MyWebsocket extends EventEmitter {
       socket.write(resHeaders);
       const ws = new SingleData(socket);
       
-      ws.on('data', (data) => { // 传输数据
-        // console.log(data)
-        this.processData(data);
-      });
       ws.on('close', () => {
         this.clients.delete(ws)
         console.log('close')

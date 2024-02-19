@@ -72,23 +72,14 @@ function frame(data) {
   //   offset = 6;
   // }
 
-  let dataLength;
-  if (typeof data === 'string') {
-    if (
-      (!options.mask || skipMasking) &&
-      options[kByteLength] !== undefined
-    ) {
-      dataLength = options[kByteLength];
-    } else {
-      data = Buffer.from(data);
-      dataLength = data.length;
-    }
-  } else {
-    dataLength = data.length;
-    merge = options.mask && options.readOnly && !skipMasking;
-  }
+  let dataLength = data.length;
+  // merge = options.mask && options.readOnly && !skipMasking;
 
   let payloadLength = dataLength;
+  // WebSocket 的最大帧大小限制
+  // 1. 单字节帧：用于长度小于 126 的数据。
+  // 2. 双字节帧：用于长度在 126 到 65535 之间的数据。
+  // 3. 八字节帧：用于长度大于 65535 的数据。
 
   if (dataLength >= 65536) {
     offset += 8;
@@ -98,12 +89,13 @@ function frame(data) {
     payloadLength = 126;
   }
 
-  const target = Buffer.allocUnsafe(merge ? dataLength + offset : offset);
+  const target = Buffer.allocUnsafe(offset);
+  // 操作码 0x1表示文本帧；0x2表示二进制帧；0x8表示关闭连接；0x9表示ping帧；0xA表示pong帧。
+  target[0] = options.opcode | 0x80;
 
-  target[0] = options.fin ? options.opcode | 0x80 : options.opcode;
-  if (options.rsv1) target[0] |= 0x40;
+  // if (options.rsv1) target[0] |= 0x40;
 
-  target[1] = payloadLength;
+  target[1] = payloadLength; // 负载长度
 
   if (payloadLength === 126) {
     target.writeUInt16BE(dataLength, 2);
@@ -111,8 +103,7 @@ function frame(data) {
     target[2] = target[3] = 0;
     target.writeUIntBE(dataLength, 4, 6);
   }
-  console.log(skipMasking, 111)
-
+  // 根据 WebSocket 协议，只有客户端发送给服务器的帧需要掩码。服务器发送给客户端的帧通常不需要掩码
   if (!options.mask) return [target, data];
 
   target[1] |= 0x80;
@@ -137,15 +128,48 @@ function encodeMessage(opcode, payload) {
   //payload.length < 126
   let bufferData = Buffer.alloc(payload.length + 2 + 0);
 
-  let byte1 = parseInt('10000000', 2) | opcode; // 设置 FIN 为 1
+  let byte1 = parseInt('10000000', 2) | opcode; // parseInt(130, 2)=1 ; 设置 FIN 为 1
   let byte2 = payload.length;
-
   bufferData.writeUInt8(byte1, 0);
   bufferData.writeUInt8(byte2, 1);
 
   payload.copy(bufferData, 2);
 
   return bufferData;
+}
+
+function encodeMessagePerf(options, data) {
+  let offset = 2;
+  let dataLength = data.length;
+
+  let payloadLength = dataLength;
+  // WebSocket 的最大帧大小限制
+  // 1. 单字节帧：用于长度小于 126 的数据。
+  // 2. 双字节帧：用于长度在 126 到 65535 之间的数据。
+  // 3. 八字节帧：用于长度大于 65535 的数据。
+
+  if (dataLength >= 65536) {
+    offset += 8;
+    payloadLength = 127;
+  } else if (dataLength > 125) {
+    offset += 2;
+    payloadLength = 126;
+  }
+
+  const target = Buffer.allocUnsafe(offset);
+  // 操作码 0x1表示文本帧；0x2表示二进制帧；0x8表示关闭连接；0x9表示ping帧；0xA表示pong帧。
+  target[0] = options | 0x80;
+
+  target[1] = payloadLength; // 负载长度
+
+  if (payloadLength === 126) {
+    target.writeUInt16BE(dataLength, 2);
+  } else if (payloadLength === 127) {
+    target[2] = target[3] = 0;
+    target.writeUIntBE(dataLength, 4, 6);
+  }
+  // 根据 WebSocket 协议，只有客户端发送给服务器的帧需要掩码。服务器发送给客户端的帧通常不需要掩码
+  return [target, data];
 }
 
 
@@ -248,18 +272,17 @@ class MyWebsocket extends EventEmitter {
 
   doSend(opcode, bufferDatafer) {
     // 少量数据
-    this.socket.write(encodeMessage(opcode, bufferDatafer));
+    // this.socket.write(encodeMessage(opcode, bufferDatafer));
     // 大量数据
-    // let list = frame(bufferDatafer)
-    // console.log(list, 1234)
-    // if (list.length === 2) {
-    //   this.socket.cork();
-    //   this.socket.write(list[0]);
-    //   this.socket.write(list[1]);
-    //   this.socket.uncork();
-    // } else {
-    //   this.socket.write(list[0]);
-    // }
+    let list = encodeMessagePerf(opcode, bufferDatafer)
+    if (list.length === 2) {
+      this.socket.cork();
+      this.socket.write(list[0]); // 头部
+      this.socket.write(list[1]); // 负载
+      this.socket.uncork();
+    } else {
+      this.socket.write(list[0]);
+    }
   }
 }
 

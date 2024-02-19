@@ -159,7 +159,7 @@ class MyWebsocket extends EventEmitter {
       if (this.clients) {
         this.clients.add(socket)
       }
-      debugger
+      // debugger
       console.log(this.clients.size, 'clients.size')
     });
   }

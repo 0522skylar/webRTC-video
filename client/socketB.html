@@ -12,6 +12,8 @@
   <p>这是B页面</p>
   <p>接收到A页面的视频</p>
   <video autoplay controls muted id="elB"></video>
+
+  <!-- <button onclick="sendA()">sendA</button> -->
   <script>
     var socketB = new WebSocket('ws://localhost:8000');
 
@@ -32,6 +34,7 @@
     // peerB 端，接收 peerA 传来的 offer
     socketB.onmessage = evt => {
       // console.log(evt.data)
+      console.log('B received:', evt.data);
       handleBlobToText(evt.data)
     }
 
@@ -62,6 +65,12 @@
     socketB.onerror = function () {
       console.log('WebSocket error. Ready state:', socketB.readyState);
     };
+
+
+    // A发消息给B页面
+    // const sendA = () => {
+    //   socketB.send(JSON.stringify({ B : '2.B send message to A'}));
+    // }
   </script>
 </body>
 

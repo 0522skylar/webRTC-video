@@ -14,6 +14,7 @@
   <div class="local-stream-page">
     <video autoplay controls muted id="elA"></video>
     <button onclick="onStart()">打视频给B页面</button>
+    <!-- <button onclick="sendB()">sendB</button> -->
   </div>
   <script>
 
@@ -104,6 +105,10 @@
       handleBlobToText(event.data)
     };
 
+    // A发消息给B页面
+    const sendB = () => {
+      socketA.send(JSON.stringify({ A: '1.A send message to B' }));
+    }
 
   </script>
 </body>
